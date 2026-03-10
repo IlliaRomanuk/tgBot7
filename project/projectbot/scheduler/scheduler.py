@@ -17,7 +17,7 @@ def setup_scheduler(bot=None):
         # Schedule daily test at 18:00 (6 PM)
         scheduler.add_job(
             send_daily_test,
-            CronTrigger(hour=21, minute=58),
+            CronTrigger(hour=18, minute=00),
             id='daily_test',
             name='Daily Test',
             replace_existing=True,
