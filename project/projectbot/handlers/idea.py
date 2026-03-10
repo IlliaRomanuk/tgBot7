@@ -2,6 +2,8 @@
 import logging
 from aiogram import Router, types, F
 from aiogram.fsm.context import FSMContext
+from aiogram.filters import StateFilter
+from aiogram.types import ReplyKeyboardRemove
 
 from states.idea_states import IdeaFlow
 from keyboards.idea import idea_priority_keyboard, idea_type_keyboard
@@ -13,10 +15,10 @@ logger = logging.getLogger(__name__)
 router = Router()
 
 
-@router.message(F.text.contains("иде"))
+@router.message(StateFilter(None), F.text == "Предложить идею")
 async def start_idea_flow(message: types.Message, state: FSMContext) -> None:
     """Start idea submission flow."""
-    logger.info(f"💡 IDEA HANDLER TRIGGERED - Received: '{message.text}' from user {message.from_user.id}")
+    logger.info(f"💡 [IDEA START] User {message.from_user.id} pressed 'Предложить идею'")
     
     await register_user(
         message.from_user.id,
@@ -48,7 +50,10 @@ async def process_type(message: types.Message, state: FSMContext) -> None:
     """Process idea type selection."""
     logger.info(f"Idea type selected: {message.text}")
     await state.update_data(idea_type=message.text)
-    await message.answer("✍️ Опиши свою идею")
+    await message.answer(
+        "✍️ Опиши свою идею",
+        reply_markup=ReplyKeyboardRemove()
+    )
     await state.set_state(IdeaFlow.description)
 
 
