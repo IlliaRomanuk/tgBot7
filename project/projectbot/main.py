@@ -1,70 +1,79 @@
+"""Main entry point for the Telegram bot."""
 import asyncio
 import logging
 import sys
-from aiogram import Dispatcher
+from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
-from config import BOT_TOKEN, DEBUG_MODE
-from bot_instance import bot
+from aiogram.fsm.storage.memory import MemoryStorage
 
-from handlers.start import register_start_handlers
-from handlers.daily_test import register_daily_test_handlers
-from handlers.ideas import register_idea_handlers
+from config import BOT_TOKEN, DEBUG_MODE
+from handlers import start_router, idea_router, problem_router, test_router, debug_router
 from database import init_db
+from scheduler import setup_scheduler
 
 # Configure logging
 logging.basicConfig(
     level=logging.DEBUG if DEBUG_MODE else logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(sys.stdout)
-    ]
+    format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)]
 )
 logger = logging.getLogger(__name__)
 
-# Create dispatcher
-dp = Dispatcher()
 
-async def main():
-    """Main bot function with comprehensive error handling and logging"""
-    try:
-        logger.info("=" * 50)
-        logger.info("Starting Telegram Bot...")
-        logger.info(f"Bot token: {BOT_TOKEN[:10]}...{BOT_TOKEN[-4:]}")
-        logger.info(f"Debug mode: {DEBUG_MODE}")
-        
-        # Initialize database first
-        logger.info("Initializing database...")
-        await init_db()
-        
-        # Register all handlers
-        logger.info("Registering handlers...")
-        register_start_handlers(dp)
-        register_daily_test_handlers(dp)
-        register_idea_handlers(dp)
-        
-        logger.info("All handlers registered successfully")
-        logger.info("Bot is ready to start polling...")
-        logger.info("=" * 50)
-        
-        # Start polling with proper configuration
-        await dp.start_polling(
-            bot,
-            handle_signals=False,
-            allowed_updates=dp.resolve_used_update_types()
-        )
-        
-    except Exception as e:
-        logger.error(f"Fatal error in main function: {e}")
-        logger.exception("Full traceback:")
-        raise
+async def main() -> None:
+    """Main bot entry point."""
+    logger.info("🚀 Starting Telegram Bot...")
+    
+    # Initialize bot and dispatcher
+    bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode="HTML"))
+    storage = MemoryStorage()
+    dp = Dispatcher(storage=storage)
+    
+    logger.info(f"✅ Bot initialized")
+    
+    # Initialize database
+    await init_db()
+    logger.info("✅ Database initialized")
+    
+    # Setup scheduler
+    scheduler = setup_scheduler(bot)
+    scheduler.start()
+    logger.info("✅ Scheduler started")
+    
+    # Register routers in priority order
+    logger.info("🔗 Registering routers...")
+    
+    dp.include_router(start_router)
+    logger.info(f"   ✓ start_router registered")
+    
+    dp.include_router(test_router)
+    logger.info(f"   ✓ test_router registered")
+    
+    dp.include_router(idea_router)
+    logger.info(f"   ✓ idea_router registered")
+    
+    dp.include_router(problem_router)
+    logger.info(f"   ✓ problem_router registered")
+    
+    dp.include_router(debug_router)  # Must be last
+    logger.info(f"   ✓ debug_router registered (fallback)")
+    
+    # Startup diagnostics
+    logger.info("📊 Startup diagnostics:")
+    logger.info(f"   Routers: {[r.name for r in dp.sub_routers]}")
+    logger.info(f"   Update types: {dp.resolve_used_update_types()}")
+    
+    logger.info("✅ All systems ready. Starting polling...")
+    
+    # Start polling
+    await dp.start_polling(bot)
+
 
 if __name__ == "__main__":
     try:
-        logger.info("Bot startup initiated")
         asyncio.run(main())
     except KeyboardInterrupt:
-        logger.info("Bot stopped by user")
+        logger.info("⏹️ Bot stopped by user")
     except Exception as e:
-        logger.error(f"Bot crashed: {e}")
-        logger.exception("Full traceback:")
+        logger.exception(f"💥 Bot crashed: {e}")
         raise

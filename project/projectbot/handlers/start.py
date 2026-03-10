@@ -1,63 +1,46 @@
-# handlers/start.py
+"""Start command handlers."""
 import logging
-from aiogram import Router, types, F
+from aiogram import Router, types
 from aiogram.filters import Command
-from keyboards import start_survey_keyboard
+from keyboards.main_menu import main_menu_keyboard
+from services.user_service import register_user
 
 logger = logging.getLogger(__name__)
 router = Router()
 
+
 @router.message(Command("start"))
-async def start(message: types.Message):
-    """Handle /start command with logging and error handling"""
-    try:
-        logger.info(f"User {message.from_user.id} ({message.from_user.username}) started the bot")
-        await message.answer(
-            "Благодарим тебя за рабочий день! Мы рады, что ты являешься частью нашей команды.\n"
-            "Нам важно отслеживать настроение и мотивацию сотрудников.\n"
-            "Ты будешь получать опрос каждый день в 18:00.",
-            reply_markup=start_survey_keyboard()
-        )
-        logger.info(f"Welcome message sent to user {message.from_user.id}")
-    except Exception as e:
-        logger.error(f"Error in start handler for user {message.from_user.id}: {e}")
-        try:
-            await message.answer("Произошла ошибка. Пожалуйста, попробуйте еще раз.")
-        except:
-            logger.error("Failed to send error message to user")
+async def start_command(message: types.Message) -> None:
+    """Handle /start command."""
+    logger.info(f"User {message.from_user.id} started the bot")
+    
+    await register_user(
+        message.from_user.id,
+        message.from_user.username,
+        message.from_user.first_name,
+        message.from_user.last_name
+    )
+    
+    await message.answer(
+        f"👋 Привет, {message.from_user.first_name}!\n\n"
+        f"Я бот для сбора обратной связи.\n"
+        f"Используй меню ниже для взаимодействия.",
+        reply_markup=main_menu_keyboard()
+    )
+
 
 @router.message(Command("help"))
-async def help_command(message: types.Message):
-    """Handle /help command with logging and error handling"""
-    try:
-        logger.info(f"User {message.from_user.id} requested help")
-        help_text = """
-📋 **Доступные команды:**
-
-/start - Начать работу с ботом
-/help - Показать это сообщение
-/idea - Поделиться идеей
-/problem - Сообщить о проблеме
-
-📊 **Опросы:**
-"Пройти опрос" - Начать ежедневный опрос о настроении и мотивации
-
-Спасибо за участие! 🎉
-        """
-        await message.answer(help_text, parse_mode="Markdown")
-        logger.info(f"Help message sent to user {message.from_user.id}")
-    except Exception as e:
-        logger.error(f"Error in help handler for user {message.from_user.id}: {e}")
-        try:
-            await message.answer("Произошла ошибка. Пожалуйста, попробуйте еще раз.")
-        except:
-            logger.error("Failed to send error message to user")
-
-def register_start_handlers(dp):
-    """Register start handlers with logging"""
-    try:
-        dp.include_router(router)
-        logger.info("Start handlers registered successfully")
-    except Exception as e:
-        logger.error(f"Failed to register start handlers: {e}")
-        raise
+async def help_command(message: types.Message) -> None:
+    """Handle /help command."""
+    logger.info(f"User {message.from_user.id} requested help")
+    
+    await message.answer(
+        "ℹ️ <b>Помощь по боту</b>\n\n"
+        "<b>Доступные команды:</b>\n"
+        "/start - Начать работу с ботом\n"
+        "/help - Показать эту справку\n\n"
+        "<b>Кнопки меню:</b>\n"
+        "• Предложить идею - Отправить предложение\n"
+        "• Сообщить о проблеме - Сообщить о проблеме\n"
+        "• ➡️ Пройти тест - Пройти ежедневный тест"
+    )
