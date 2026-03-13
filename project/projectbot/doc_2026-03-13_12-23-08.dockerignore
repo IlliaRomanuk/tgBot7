@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.db
+.env
+.git/
+.idea/
+project/
+Scripts/
+Lib/
